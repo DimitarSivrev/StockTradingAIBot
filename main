@@ -1,0 +1,41 @@
+# region imports
+from AlgorithmImports import *
+# endregion
+
+class TradingAlgorithm(QCAlgorithm):
+
+    def Initialize(self):
+        self.SetStartDate(2021, 3, 30)  # Set Start Date
+        self.SetCash(100000)  # Set Strategy Cash
+
+        self.UniverseSettings.Resolution = Resolution.Daily
+
+        self.AddUniverse(self.SortingCoarse)
+
+        #self.__numberOfSymbols = 5
+        self.changes = None
+
+    #Sorts the coarse by the daily dollar volume and selects the top stocks
+    def SortingCoarse(self,coarse):
+        #Sorts the data by daily dollar volume
+        sortedByDollarVolume = sorted(coarse, key=lambda x: x.DollarVolume, reverse=True)
+
+        #Returns the stock symbols for the top stocks
+        return [ x.Symbol for x in sortedByDollarVolume[:5]]
+
+    def OnData(self, data: Slice):
+        #If there are no changes then nothing happens
+        if self.changes is None: return
+
+        #Sells the securities if not in the changed universe
+        for security in self.changes.RemovedSecurities:
+            if security.Invested:
+                self.Liquidate(security.Symbol)
+
+        #Makes a list of the securities
+        for security in self.changes.AddedSecurities:
+            self.SetHoldings(security.Symbol, 1 /5)
+        self.changes = None
+
+    def OnSecuritiesChanged(self, changes):
+        self.changes = changes
